@@ -29,6 +29,8 @@ tiktoken                         # Token counting for OpenAI models
 
 # ── Frontend ──
 streamlit                        # UI
+fastapi                          # API for the React UI
+uvicorn                          # FastAPI development server
 
 # ── Environment & Config ──
 python-dotenv                    # Load .env API keys

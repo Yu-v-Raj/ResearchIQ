@@ -1,5 +1,14 @@
 import streamlit as st
 import html
+from history_db import (
+    delete_all_reports,
+    delete_report,
+    extract_sources,
+    get_report,
+    init_db,
+    list_reports,
+    save_research,
+)
 from pipeline import run_research_pipeline
 
 # ── Page Config ──────────────────────────────────────────────
@@ -7,8 +16,10 @@ st.set_page_config(
     page_title="ResearchIQ · Multi-Agent Research System",
     page_icon="🧠",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"
 )
+
+init_db()
 
 # ── Custom CSS ────────────────────────────────────────────────
 st.markdown("""
@@ -26,8 +37,18 @@ html, body, [class*="css"] {
     background: #0a0a0f;
 }
 
-/* Hide Streamlit defaults */
-#MainMenu, footer, header { visibility: hidden; }
+/* Hide Streamlit defaults while keeping the sidebar toggle reachable */
+#MainMenu, footer { visibility: hidden; }
+header[data-testid="stHeader"] {
+    visibility: visible;
+    background: transparent;
+}
+[data-testid="stToolbar"] {
+    visibility: hidden;
+}
+[data-testid="collapsedControl"] {
+    visibility: visible;
+}
 .block-container {
     padding: 2rem 3rem 4rem 3rem;
     max-width: 1100px;
@@ -152,6 +173,41 @@ html, body, [class*="css"] {
 .stButton > button:hover {
     transform: translateY(-1px) !important;
     box-shadow: 0 8px 25px #7c3aed44 !important;
+}
+
+section[data-testid="stSidebar"] {
+    background: #0d0d14;
+    border-right: 1px solid #1e1e2e;
+}
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 {
+    color: #e8e8f0;
+    font-family: 'Space Grotesk', sans-serif;
+}
+section[data-testid="stSidebar"] .stButton > button {
+    background: #111118 !important;
+    border: 1px solid #1e1e2e !important;
+    color: #c4c4d4 !important;
+    box-shadow: none !important;
+    text-align: left !important;
+    padding: 0.65rem 0.8rem !important;
+    font-size: 0.82rem !important;
+}
+section[data-testid="stSidebar"] .stButton > button:hover {
+    transform: none !important;
+    border-color: #7c3aed88 !important;
+    color: #e8e8f0 !important;
+}
+.history-meta {
+    color: #6b7280;
+    font-size: 0.78rem;
+    margin-bottom: 0.6rem;
+}
+.source-list {
+    color: #c4c4d4;
+    line-height: 1.8;
+    word-break: break-word;
 }
 
 /* ── Step Cards ── */
@@ -354,6 +410,46 @@ html, body, [class*="css"] {
 </style>
 """, unsafe_allow_html=True)
 
+if "selected_report_id" not in st.session_state:
+    st.session_state.selected_report_id = None
+
+
+def clear_selected_report():
+    st.session_state.selected_report_id = None
+
+
+with st.sidebar:
+    st.markdown("## Research History")
+    saved_reports = list_reports()
+
+    if saved_reports:
+        for saved_report in saved_reports:
+            label_topic = saved_report["topic"]
+            if len(label_topic) > 42:
+                label_topic = f"{label_topic[:39]}..."
+
+            if st.button(
+                f"{label_topic}\n{saved_report['timestamp']}",
+                key=f"history_{saved_report['id']}",
+                use_container_width=True,
+            ):
+                st.session_state.selected_report_id = saved_report["id"]
+
+        st.markdown("<div style='height:0.6rem'></div>", unsafe_allow_html=True)
+
+        if st.session_state.selected_report_id:
+            if st.button("Delete Report", use_container_width=True):
+                delete_report(st.session_state.selected_report_id)
+                clear_selected_report()
+                st.rerun()
+
+        if st.button("Delete All History", use_container_width=True):
+            delete_all_reports()
+            clear_selected_report()
+            st.rerun()
+    else:
+        st.markdown("<div class='history-meta'>Completed research reports will appear here.</div>", unsafe_allow_html=True)
+
 
 # ── Hero ─────────────────────────────────────────────────────
 st.markdown("""
@@ -447,6 +543,71 @@ def render_progress_tracker(placeholder, progress_value, stage_statuses, current
         """, unsafe_allow_html=True)
         st.progress(progress_value)
 
+
+def render_report_results(topic, state, sources=None, timestamp=None):
+    sources = sources or []
+
+    if timestamp:
+        st.markdown(
+            f"<div class='history-meta'>Saved report from {html.escape(timestamp)}</div>",
+            unsafe_allow_html=True,
+        )
+
+    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+        "🔎 Search Results",
+        "📄 Scraped Content",
+        "📝 Final Report",
+        "🧠 Critic Feedback",
+        "🔗 Sources",
+    ])
+
+    with tab1:
+        st.markdown("#### What the Search Agent found")
+        st.markdown(
+            f"<div class='content-text'>{html.escape(state.get('search_results', 'No saved search results.'))}</div>",
+            unsafe_allow_html=True,
+        )
+
+    with tab2:
+        st.markdown("#### What the Reader Agent scraped")
+        st.markdown(
+            f"<div class='content-text'>{html.escape(state.get('scraped_content', 'No saved scraped content.'))}</div>",
+            unsafe_allow_html=True,
+        )
+
+    with tab3:
+        st.markdown("#### Full Research Report")
+        st.markdown(state.get("report", "No report generated."))
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+        st.download_button(
+            label="📥 Download Report as .txt",
+            data=state.get("report", ""),
+            file_name=f"{topic[:40].replace(' ', '_')}_report.txt",
+            mime="text/plain"
+        )
+
+    with tab4:
+        feedback = state.get("feedback", "")
+        score_line = ""
+        for line in feedback.split("\n"):
+            if line.strip().startswith("Score:"):
+                score_line = line.strip().replace("Score:", "").strip()
+                break
+        if score_line:
+            st.markdown(f"<div class='score-badge'>⭐ {html.escape(score_line)}</div>", unsafe_allow_html=True)
+        st.markdown(feedback or "No critic feedback saved.")
+
+    with tab5:
+        st.markdown("#### Sources")
+        if sources:
+            source_items = "".join(
+                f"<li><a href='{html.escape(source)}' target='_blank'>{html.escape(source)}</a></li>"
+                for source in sources
+            )
+            st.markdown(f"<ol class='source-list'>{source_items}</ol>", unsafe_allow_html=True)
+        else:
+            st.markdown("<div class='content-text'>No source URLs were found in this report.</div>", unsafe_allow_html=True)
+
 if run:
     if not topic.strip():
         st.warning("Please enter a research topic to continue.")
@@ -486,42 +647,38 @@ if run:
             </div>
             """, unsafe_allow_html=True)
         else:
+            sources = extract_sources(
+                state.get("search_results", ""),
+                state.get("scraped_content", ""),
+                state.get("report", ""),
+            )
+            saved_report_id = save_research(
+                topic.strip(),
+                state.get("report", ""),
+                state.get("feedback", ""),
+                sources,
+            )
+            st.session_state.selected_report_id = saved_report_id
+
             st.success("✅ Research complete!")
             st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
+            render_report_results(topic.strip(), state, sources)
 
-            tab1, tab2, tab3, tab4 = st.tabs([
-                "🔎 Search Results",
-                "📄 Scraped Content",
-                "📝 Final Report",
-                "🧠 Critic Feedback"
-            ])
+if not run and st.session_state.selected_report_id:
+    selected_report = get_report(st.session_state.selected_report_id)
 
-            with tab1:
-                st.markdown("#### What the Search Agent found")
-                st.markdown(f"<div class='content-text'>{state.get('search_results', 'No results.')}</div>", unsafe_allow_html=True)
-
-            with tab2:
-                st.markdown("#### What the Reader Agent scraped")
-                st.markdown(f"<div class='content-text'>{state.get('scraped_content', 'No content scraped.')}</div>", unsafe_allow_html=True)
-
-            with tab3:
-                st.markdown("#### Full Research Report")
-                st.markdown(state.get("report", "No report generated."))
-                st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
-                st.download_button(
-                    label="📥 Download Report as .txt",
-                    data=state.get("report", ""),
-                    file_name=f"{topic[:40].replace(' ', '_')}_report.txt",
-                    mime="text/plain"
-                )
-
-            with tab4:
-                feedback = state.get("feedback", "")
-                score_line = ""
-                for line in feedback.split("\n"):
-                    if line.strip().startswith("Score:"):
-                        score_line = line.strip().replace("Score:", "").strip()
-                        break
-                if score_line:
-                    st.markdown(f"<div class='score-badge'>⭐ {score_line}</div>", unsafe_allow_html=True)
-                st.markdown(feedback)
+    if selected_report is None:
+        clear_selected_report()
+        st.warning("That saved report no longer exists.")
+    else:
+        st.markdown("### Loaded from Research History")
+        loaded_state = {
+            "report": selected_report["final_report"],
+            "feedback": selected_report["critic_feedback"],
+        }
+        render_report_results(
+            selected_report["topic"],
+            loaded_state,
+            selected_report["sources"],
+            selected_report["timestamp"],
+        )

@@ -5,6 +5,30 @@ from agents import build_reader_agent, build_search_agent, writer_chain, critic_
 ProgressCallback = Callable[[str, str, int, Optional[str]], None]
 
 
+def format_agent_error(error: Exception) -> str:
+    error_text = str(error)
+
+    if "rate_limit_exceeded" in error_text or "Rate limit reached" in error_text:
+        retry_message = ""
+        marker = "Please try again in "
+        if marker in error_text:
+            retry_after = error_text.split(marker, 1)[1].split(" Need", 1)[0].rstrip(".")
+            retry_message = f" Try again in {retry_after}."
+
+        return (
+            "The model provider rate limit was reached, so the research run stopped."
+            f"{retry_message}"
+        )
+
+    if "api_key" in error_text.lower() or "authentication" in error_text.lower():
+        return "The model provider rejected the API credentials. Check your API key and try again."
+
+    if "timeout" in error_text.lower():
+        return "The agent request timed out. Please try again in a moment."
+
+    return error_text
+
+
 def _notify(
     callback: Optional[ProgressCallback],
     stage: str,
@@ -34,8 +58,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         state["search_results"] = search_result['messages'][-1].content
         _notify(progress_callback, "searching", "success", 25, "Search completed.")
     except Exception as exc:
-        _notify(progress_callback, "searching", "error", 10, str(exc))
-        raise RuntimeError(f"Search agent failed: {exc}") from exc
+        clean_error = format_agent_error(exc)
+        _notify(progress_callback, "searching", "error", 10, clean_error)
+        raise RuntimeError(f"Search agent failed: {clean_error}") from exc
 
     print("\n search result ", state['search_results'])
 
@@ -57,8 +82,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         state['scraped_content'] = reader_result['messages'][-1].content
         _notify(progress_callback, "reading", "success", 50, "Sources read successfully.")
     except Exception as exc:
-        _notify(progress_callback, "reading", "error", 35, str(exc))
-        raise RuntimeError(f"Reader agent failed: {exc}") from exc
+        clean_error = format_agent_error(exc)
+        _notify(progress_callback, "reading", "error", 35, clean_error)
+        raise RuntimeError(f"Reader agent failed: {clean_error}") from exc
 
     print("\nscraped content: \n", state['scraped_content'])
 
@@ -80,8 +106,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         })
         _notify(progress_callback, "writing", "success", 75, "Report draft completed.")
     except Exception as exc:
-        _notify(progress_callback, "writing", "error", 65, str(exc))
-        raise RuntimeError(f"Writer agent failed: {exc}") from exc
+        clean_error = format_agent_error(exc)
+        _notify(progress_callback, "writing", "error", 65, clean_error)
+        raise RuntimeError(f"Writer agent failed: {clean_error}") from exc
 
     print("\n Final Report\n", state['report'])
 
@@ -97,8 +124,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         })
         _notify(progress_callback, "critiquing", "success", 95, "Critique completed.")
     except Exception as exc:
-        _notify(progress_callback, "critiquing", "error", 88, str(exc))
-        raise RuntimeError(f"Critic agent failed: {exc}") from exc
+        clean_error = format_agent_error(exc)
+        _notify(progress_callback, "critiquing", "error", 88, clean_error)
+        raise RuntimeError(f"Critic agent failed: {clean_error}") from exc
 
     print("\n critic report \n", state['feedback'])
 
