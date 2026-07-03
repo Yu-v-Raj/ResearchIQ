@@ -1,0 +1,40 @@
+# ─────────────────────────────────────────
+# Multi-Agent Research System - Requirements
+# ─────────────────────────────────────────
+
+# ── Core LangChain Stack ──
+langchain
+langchain-community
+langchain-openai
+langgraph                        # LCEL pipeline + agent orchestration
+
+# ── OpenAI ──
+openai                           # OpenAI API (GPT models)
+
+# ── ReAct Agent ──
+# Built into langgraph/langchain — no separate install needed
+
+# ── Tools ──
+tavily-python                    # Tavily search tool
+beautifulsoup4                   # Web scraping tool
+requests                         # HTTP requests (used with BeautifulSoup)
+lxml                             # Fast HTML/XML parser for BeautifulSoup
+
+# ── Runnables / LCEL ──
+# Part of core langchain — no separate install needed
+
+# ── Vector DB / RAG (optional but common in research systems) ──
+chromadb                         # Vector store
+tiktoken                         # Token counting for OpenAI models
+
+# ── Frontend ──
+streamlit                        # UI
+
+# ── Environment & Config ──
+python-dotenv                    # Load .env API keys
+
+# ── Utilities ──
+pydantic                         # Data validation (used heavily by langchain)
+httpx                            # Async HTTP client
+aiohttp                          # Async support
+
