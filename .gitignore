@@ -2,9 +2,6 @@
 .venv/
 .vevn/
 
-# Database
-*.db
-
 # Python Cache
 __pycache__/
 *.pyc
