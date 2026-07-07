@@ -72,6 +72,8 @@ def research(request: ResearchRequest):
                 state.get("report", ""),
                 state.get("feedback", ""),
                 sources,
+                search_results=state.get("search_results", ""),
+                scraped_content=state.get("scraped_content", ""),
             )
             events.put(
                 {

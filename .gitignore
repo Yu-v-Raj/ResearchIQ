@@ -1,5 +1,9 @@
 # Virtual Environment
 .venv/
+.vevn/
+
+# Database
+*.db
 
 # Python Cache
 __pycache__/

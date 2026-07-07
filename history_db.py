@@ -25,10 +25,25 @@ def init_db():
                 timestamp TEXT NOT NULL,
                 final_report TEXT NOT NULL,
                 critic_feedback TEXT NOT NULL,
-                sources TEXT NOT NULL
+                sources TEXT NOT NULL,
+                search_results TEXT NOT NULL DEFAULT '',
+                scraped_content TEXT NOT NULL DEFAULT ''
             )
             """
         )
+        # Migrate older databases that lack the new columns
+        existing = {
+            row[1]
+            for row in connection.execute("PRAGMA table_info(research_history)").fetchall()
+        }
+        if "search_results" not in existing:
+            connection.execute(
+                "ALTER TABLE research_history ADD COLUMN search_results TEXT NOT NULL DEFAULT ''"
+            )
+        if "scraped_content" not in existing:
+            connection.execute(
+                "ALTER TABLE research_history ADD COLUMN scraped_content TEXT NOT NULL DEFAULT ''"
+            )
 
 
 def extract_sources(*texts):
@@ -48,7 +63,7 @@ def extract_sources(*texts):
     return sources
 
 
-def save_research(topic, final_report, critic_feedback, sources):
+def save_research(topic, final_report, critic_feedback, sources, search_results="", scraped_content=""):
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with get_connection() as connection:
         cursor = connection.execute(
@@ -58,9 +73,11 @@ def save_research(topic, final_report, critic_feedback, sources):
                 timestamp,
                 final_report,
                 critic_feedback,
-                sources
+                sources,
+                search_results,
+                scraped_content
             )
-            VALUES (?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 topic,
@@ -68,6 +85,8 @@ def save_research(topic, final_report, critic_feedback, sources):
                 final_report,
                 critic_feedback,
                 json.dumps(sources),
+                search_results,
+                scraped_content,
             ),
         )
         return cursor.lastrowid
@@ -89,7 +108,8 @@ def get_report(report_id):
     with get_connection() as connection:
         row = connection.execute(
             """
-            SELECT id, topic, timestamp, final_report, critic_feedback, sources
+            SELECT id, topic, timestamp, final_report, critic_feedback, sources,
+                   search_results, scraped_content
             FROM research_history
             WHERE id = ?
             """,

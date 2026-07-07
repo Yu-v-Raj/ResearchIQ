@@ -3,40 +3,24 @@
 # ─────────────────────────────────────────
 
 # ── Core LangChain Stack ──
-langchain
-langchain-community
-langchain-openai
-langgraph                        # LCEL pipeline + agent orchestration
-
-# ── OpenAI ──
-openai                           # OpenAI API (GPT models)
-
-# ── ReAct Agent ──
-# Built into langgraph/langchain — no separate install needed
+langchain                        # Base framework (tools, chains)
+langchain-core                   # Prompts, output parsers, LCEL
+langchain-groq                   # ChatGroq LLM wrapper
+langgraph                        # Agent orchestration (create_react_agent)
 
 # ── Tools ──
-tavily-python                    # Tavily search tool
-beautifulsoup4                   # Web scraping tool
-requests                         # HTTP requests (used with BeautifulSoup)
-lxml                             # Fast HTML/XML parser for BeautifulSoup
-
-# ── Runnables / LCEL ──
-# Part of core langchain — no separate install needed
-
-# ── Vector DB / RAG (optional but common in research systems) ──
-chromadb                         # Vector store
-tiktoken                         # Token counting for OpenAI models
+tavily-python                    # Tavily web-search tool
+beautifulsoup4                   # HTML scraping (bs4)
+requests                         # HTTP requests
+rich                             # Pretty terminal output (tools.py)
 
 # ── Frontend ──
-streamlit                        # UI
-fastapi                          # API for the React UI
-uvicorn                          # FastAPI development server
+streamlit                        # Streamlit UI (app.py)
+fastapi                          # REST API (api.py)
+uvicorn                          # ASGI server for FastAPI
 
 # ── Environment & Config ──
 python-dotenv                    # Load .env API keys
 
 # ── Utilities ──
-pydantic                         # Data validation (used heavily by langchain)
-httpx                            # Async HTTP client
-aiohttp                          # Async support
-
+pydantic                         # Data validation (used by FastAPI & LangChain)

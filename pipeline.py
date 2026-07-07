@@ -45,9 +45,6 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
     state = {}
 
     # search agent working
-    print("\n" + "=" * 50)
-    print("Step 1 - Search agent is working ...")
-    print("=" * 50)
 
     _notify(progress_callback, "searching", "running", 10, "Searching for reliable sources...")
     try:
@@ -62,12 +59,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         _notify(progress_callback, "searching", "error", 10, clean_error)
         raise RuntimeError(f"Search agent failed: {clean_error}") from exc
 
-    print("\n search result ", state['search_results'])
+
 
     # step 2 - reader agent
-    print("\n" + "=" * 50)
-    print("Step 2 - Reader agent is scraping top resources ...")
-    print("=" * 50)
 
     _notify(progress_callback, "reading", "running", 35, "Reading and scraping source content...")
     try:
@@ -86,12 +80,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         _notify(progress_callback, "reading", "error", 35, clean_error)
         raise RuntimeError(f"Reader agent failed: {clean_error}") from exc
 
-    print("\nscraped content: \n", state['scraped_content'])
+
 
     # step 3 - writer agent
-    print("\n" + "=" * 50)
-    print("Step 3 - Writer is drafting the report ...")
-    print("=" * 50)
 
     research_combined = (
         f"SEARCH RESULTS : \n {state['search_results']} \n\n"
@@ -110,12 +101,9 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         _notify(progress_callback, "writing", "error", 65, clean_error)
         raise RuntimeError(f"Writer agent failed: {clean_error}") from exc
 
-    print("\n Final Report\n", state['report'])
+
 
     # critic report
-    print("\n" + "=" * 50)
-    print("Step 4 - Critic is reviewing the report ")
-    print("=" * 50)
 
     _notify(progress_callback, "critiquing", "running", 88, "Critiquing the final report...")
     try:
@@ -128,7 +116,7 @@ def run_research_pipeline(topic: str, progress_callback: Optional[ProgressCallba
         _notify(progress_callback, "critiquing", "error", 88, clean_error)
         raise RuntimeError(f"Critic agent failed: {clean_error}") from exc
 
-    print("\n critic report \n", state['feedback'])
+
 
     _notify(progress_callback, "completed", "success", 100, "Completed")
     return state

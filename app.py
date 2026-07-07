@@ -47,7 +47,13 @@ header[data-testid="stHeader"] {
     visibility: hidden;
 }
 [data-testid="collapsedControl"] {
-    visibility: visible;
+    visibility: visible !important;
+    display: flex !important;
+    color: #a78bfa !important;
+    z-index: 999999 !important;
+    background: #0d0d14 !important;
+    border-radius: 8px !important;
+    padding: 0.3rem !important;
 }
 .block-container {
     padding: 2rem 3rem 4rem 3rem;
@@ -402,10 +408,23 @@ section[data-testid="stSidebar"] .stButton > button:hover {
 
 /* Content text */
 .content-text {
-    color: #c4c4d4;
+    color: #e8e8f0;
     font-size: 0.93rem;
     line-height: 1.8;
     white-space: pre-wrap;
+}
+
+/* Make markdown text in tab panels white */
+.stTabs [data-baseweb="tab-panel"] p,
+.stTabs [data-baseweb="tab-panel"] li,
+.stTabs [data-baseweb="tab-panel"] ol,
+.stTabs [data-baseweb="tab-panel"] ul,
+.stTabs [data-baseweb="tab-panel"] h1,
+.stTabs [data-baseweb="tab-panel"] h2,
+.stTabs [data-baseweb="tab-panel"] h3,
+.stTabs [data-baseweb="tab-panel"] h4,
+.stTabs [data-baseweb="tab-panel"] strong {
+    color: #e8e8f0 !important;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -486,15 +505,16 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Input ─────────────────────────────────────────────────────
-col1, col2 = st.columns([5, 1])
-with col1:
-    topic = st.text_input(
-        label="topic",
-        label_visibility="collapsed",
-        placeholder="e.g. impact of AI on healthcare, quantum computing, PCOS treatment..."
-    )
-with col2:
-    run = st.button("Research →", use_container_width=True)
+with st.form(key="research_form", clear_on_submit=False):
+    col1, col2 = st.columns([5, 1])
+    with col1:
+        topic = st.text_input(
+            label="topic",
+            label_visibility="collapsed",
+            placeholder="e.g. impact of AI on healthcare, quantum computing, PCOS treatment..."
+        )
+    with col2:
+        run = st.form_submit_button("Research →", use_container_width=True)
 
 st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
 
@@ -657,6 +677,8 @@ if run:
                 state.get("report", ""),
                 state.get("feedback", ""),
                 sources,
+                search_results=state.get("search_results", ""),
+                scraped_content=state.get("scraped_content", ""),
             )
             st.session_state.selected_report_id = saved_report_id
 
@@ -673,6 +695,8 @@ if not run and st.session_state.selected_report_id:
     else:
         st.markdown("### Loaded from Research History")
         loaded_state = {
+            "search_results": selected_report.get("search_results", ""),
+            "scraped_content": selected_report.get("scraped_content", ""),
             "report": selected_report["final_report"],
             "feedback": selected_report["critic_feedback"],
         }
